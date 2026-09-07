@@ -68,7 +68,7 @@ you: [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn), where `loader`
 and `library` get their machinery from.
 
 Two more are named in `build.zig.zon` and are *not* fetched for you:
-[Fluxion Platform](../fluxion-platform) opens the window the examples draw
+[Fluxion Platform](https://github.com/kisstp2006/fluxion-platform) opens the window the examples draw
 into, and [Fluxion Math](https://github.com/kisstp2006/fluxion-math) is their
 matrices. Both are `lazy`, and `build.zig` asks for them only when this is the
 package being built - so a program that depends on `fluxion_gl` downloads
@@ -377,7 +377,7 @@ are about loading rather than drawing, and a fake driver can be a version
 behind on purpose. The other three open a real context and use the real one.
 
 `examples/window.zig` is a window with a context in it, and it is
-[Fluxion Platform](../fluxion-platform) doing the work: Win32 and WGL here,
+[Fluxion Platform](https://github.com/kisstp2006/fluxion-platform) doing the work: Win32 and WGL here,
 X11 and GLX or Wayland and EGL there, chosen when the program starts. What is
 left in the file is the shape the examples want — one struct with a `pump`
 and a `present`. It is also where the two libraries meet: a platform window
