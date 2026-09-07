@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! The GL shared library, opened by name, for the commands the window
 //! system's `getProcAddress` will not return.

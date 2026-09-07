@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! The same frame on three devices: a desktop OpenGL 3.3 driver, an OpenGL ES
 //! 3.0 one, and an ES 2.0 one that has neither vertex arrays nor instancing.

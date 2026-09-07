@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! Two dimensions: a dozen textured quads bouncing in a window, in one draw
 //! call.

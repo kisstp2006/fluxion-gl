@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! Fluxion GL - the entry points of OpenGL and OpenGL ES, found at run time.
 //!

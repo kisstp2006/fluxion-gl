@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! What `glGetString(GL_VERSION)` and `GL_SHADING_LANGUAGE_VERSION` say, read
 //! as numbers.

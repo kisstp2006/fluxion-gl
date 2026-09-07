@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: BSL-1.0
 
 //! The numbers the commands take, which GL calls enums even though they are
 //! one flat numbering shared by every argument of every command.
