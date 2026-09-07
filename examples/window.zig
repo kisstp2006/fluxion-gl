@@ -341,7 +341,7 @@ pub const Window = struct {
             .context = context,
             .width = options.width,
             .height = options.height,
-            .opengl32 = opengl.Library.openGl() catch return error.ContextFailed,
+            .opengl32 = opengl.openGl() catch return error.ContextFailed,
         };
 
         // Ask the window rather than trusting the arithmetic: the frame the
@@ -376,7 +376,7 @@ pub const Window = struct {
     /// OpenGL 1.1 - which is to say for `glClear` and most of what a frame
     /// calls. This is `library.Chain`, and this is what it is for.
     pub fn resolver(self: *Window) opengl.Chain {
-        return .{ .context = getProcAddress, .library = &self.opengl32 };
+        return .{ .context = wglGetProcAddress, .library = &self.opengl32 };
     }
 
     /// Drain everything in the queue and answer whether the window is still
@@ -426,14 +426,6 @@ pub const Window = struct {
 // -------------------------------------------------------------------------
 // The parts of opening one that are worth their own name
 // -------------------------------------------------------------------------
-
-/// The library's resolver type is a plain C function, and `wglGetProcAddress`
-/// is a Windows one. On x86-64 those are the same convention and this
-/// disappears; on 32-bit Windows they are not, and this is the wrapper that
-/// makes the difference somebody else's problem.
-fn getProcAddress(name: [*:0]const u8) callconv(.c) ?opengl.Proc {
-    return wglGetProcAddress(name);
-}
 
 fn registerClass() void {
     const class: ClassExW = .{

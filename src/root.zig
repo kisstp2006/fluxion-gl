@@ -70,6 +70,12 @@ pub const Library = library.Library;
 /// A getProcAddress with the library behind it. See `library`.
 pub const Chain = library.Chain;
 
+/// Open this platform's desktop OpenGL library. See `library.openGl`.
+pub const openGl = library.openGl;
+
+/// Open this platform's OpenGL ES library. See `library.openGles`.
+pub const openGles = library.openGles;
+
 /// Fill any table of function pointers. See `loader.load`.
 pub const load = loader.load;
 

@@ -6,12 +6,23 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // fluxion-dyn: opening a shared library and filling a struct of function
+    // pointers from a resolver, which is the general form of what `library`
+    // and `loader` do.
+    const dyn = b.dependency("fluxion_dyn", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     // The importable module. Consumers do:
     //   const opengl = @import("fluxion_gl");
     const mod = b.addModule("fluxion_gl", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "fluxion_dyn", .module = dyn.module("fluxion_dyn") },
+        },
     });
 
     // zig build test

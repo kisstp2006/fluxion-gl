@@ -5,14 +5,14 @@ Eight pieces that fit together:
 
 | Module | What it is |
 | --- | --- |
-| `loader` | Fills a struct of function pointers from a `getProcAddress`, by field name. Optionality is in the type: a `?*const fn` field is a command that may be absent. |
+| `loader` | Fills a struct of function pointers from a `getProcAddress`, by field name. Optionality is in the type: a `?*const fn` field is a command that may be absent. [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn) with the `gl` prefix built in. |
 | `gl` | The desktop table: every command of OpenGL 3.3 core, with 4.x - storage, debug output, compute - as optional fields. |
 | `gles` | The OpenGL ES table: every command of ES 2.0, with ES 3.0 optional. A separate table because ES is a separate API, not a subset with the same spelling. |
 | `enums` | The tokens the commands take, under the Khronos names with `GL_` taken off, plus the four that are defined as a sum. |
 | `types` | `GLenum`, `GLsizei`, `GLsync` and the rest, and the byte offset that goes where a pointer would. |
 | `version` | `GL_VERSION` and `GL_SHADING_LANGUAGE_VERSION` read as numbers, including the line a shader has to start with. |
 | `extensions` | The extension string or the indexed list, searched without allocating and without caring about the `GL_` prefix. |
-| `library` | The GL library opened by name, for the commands `wglGetProcAddress` refuses to return - which on Windows is `glClear` and every other one from 1997. |
+| `library` | The GL library opened by name, for the commands `wglGetProcAddress` refuses to return - which on Windows is `glClear` and every other one from 1997. What each platform calls it; the opening itself is [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn). |
 
 Both tables answer to the same calls, so a program that runs on the desktop
 and on a phone writes its startup once:
@@ -62,6 +62,10 @@ exe_mod.addImport("fluxion_gl", fluxion.module("fluxion_gl"));
 const opengl = @import("fluxion_gl");
 const c = opengl.enums;
 ```
+
+One dependency comes with it, fetched the same way and needing nothing from
+you: [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn), where `loader`
+and `library` get their machinery from.
 
 ## Tour
 

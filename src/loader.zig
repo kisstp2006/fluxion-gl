@@ -33,15 +33,29 @@
 //! A resolver is either the `getProcAddress` the window system handed you or
 //! any value with a `get` method, so a fallback chain - see `library` - drops
 //! in without changing anything here.
+//!
+//! **The walk itself is not about OpenGL.** Deriving a symbol name from a
+//! field name, asking a resolver for it, and letting the field's type say
+//! whether it may be absent is what `fluxion-dyn` does - for Vulkan and for
+//! `d3d12.dll` as much as for a GL driver. So that is where it lives, and this
+//! module is the OpenGL-facing name for it: the `gl` prefix as a default, the
+//! word "command" where `fluxion-dyn` says "symbol", and nothing else.
 
 const std = @import("std");
 const testing = std.testing;
+
+const dyn = @import("fluxion_dyn");
 
 /// A function pointer of unknown signature, which is all `getProcAddress`
 /// promises to return. Each one is cast to its field's type on the way into
 /// the table; the cast is right exactly as far as the table's declaration is,
 /// which is why the tables in `gl` and `gles` are worth reading.
-pub const Proc = *const fn () callconv(.c) void;
+pub const Proc = dyn.Proc;
+
+/// The convention the platform's own entry points use: `stdcall` on Windows,
+/// the C one everywhere else. On x86-64 Windows the two are the same and this
+/// makes no difference; on a 32-bit build they are not.
+pub const system = dyn.system;
 
 /// The shape of every `getProcAddress` in the wild: GLFW's
 /// `glfwGetProcAddress`, SDL's `SDL_GL_GetProcAddress`, EGL's
@@ -49,12 +63,18 @@ pub const Proc = *const fn () callconv(.c) void;
 /// `glXGetProcAddressARB`.
 ///
 /// A resolver need not be one of these - anything with a `get` method will
-/// do - but this is the type a C library hands you.
-pub const GetProcAddress = *const fn (name: [*:0]const u8) callconv(.c) ?Proc;
+/// do, and a function of any convention may be passed straight to `load` -
+/// but this is the type a C library hands you, and the one `library.Chain`
+/// holds.
+pub const GetProcAddress = dyn.GetProcAddress;
 
 /// Loading failed because a command the table requires was not there.
 /// `Status.missing` names it; `tryLoad` reports rather than fails.
 pub const Error = error{CommandMissing};
+
+/// What a load found. `tryLoad` returns one; `load` turns anything but a
+/// clean one into `error.CommandMissing`.
+pub const Status = dyn.Status;
 
 /// How field names are turned into the names the driver knows.
 ///
@@ -82,33 +102,11 @@ pub const Options = struct {
     /// try loader.loadWith(&api, get, .{ .suffixes = &.{"OES"} });
     /// ```
     suffixes: []const []const u8 = &.{},
-};
 
-/// What a load found. `tryLoad` returns one; `load` turns anything but a
-/// clean one into `error.CommandMissing`.
-pub const Status = struct {
-    /// Fields in the table.
-    requested: usize = 0,
-    /// Fields the driver had an address for.
-    loaded: usize = 0,
-    /// Optional fields the driver had not; those are `null`.
-    absent: usize = 0,
-    /// Required fields the driver had not. Those were left exactly as they
-    /// were, which for a fresh table means undefined.
-    short: usize = 0,
-    /// The first required field the driver had not, under the name it was
-    /// asked for.
-    missing: ?[]const u8 = null,
-
-    /// Is the table safe to call?
-    pub fn ok(self: Status) bool {
-        return self.short == 0;
-    }
-
-    pub fn format(self: Status, w: *std.Io.Writer) std.Io.Writer.Error!void {
-        try w.print("{d}/{d} loaded", .{ self.loaded, self.requested });
-        if (self.absent > 0) try w.print(", {d} optional absent", .{self.absent});
-        if (self.missing) |name| try w.print(", {d} required missing, first {s}", .{ self.short, name });
+    /// The same rules under the names `fluxion-dyn` gives them. A GL table
+    /// always capitalises, because it always has a prefix.
+    pub fn naming(self: Options) dyn.Naming {
+        return .{ .prefix = self.prefix, .suffixes = self.suffixes };
     }
 };
 
@@ -131,41 +129,14 @@ pub fn loadWith(table: anytype, resolver: anytype, comptime options: Options) Er
 /// is something to work around or to print, and for the count that belongs in
 /// a startup log.
 pub fn tryLoad(table: anytype, resolver: anytype, comptime options: Options) Status {
-    const Table = Pointee(@TypeOf(table));
-    const fields = @typeInfo(Table).@"struct".fields;
-
-    var status: Status = .{ .requested = fields.len };
-    inline for (fields) |field| {
-        const Command = CommandType(Table, field);
-        const required = @typeInfo(field.type) != .optional;
-        const name = comptime commandName(field.name, options);
-
-        var found = resolve(resolver, name);
-        inline for (options.suffixes) |suffix| {
-            if (found == null) {
-                found = resolve(resolver, comptime commandNameSuffixed(field.name, options, suffix));
-            }
-        }
-
-        if (found) |proc| {
-            @field(table, field.name) = @as(Command, @ptrCast(proc));
-            status.loaded += 1;
-        } else if (required) {
-            status.short += 1;
-            if (status.missing == null) status.missing = name;
-        } else {
-            @field(table, field.name) = null;
-            status.absent += 1;
-        }
-    }
-    return status;
+    return dyn.tryLoad(table, resolver, comptime options.naming());
 }
 
 /// The name `load` asks the driver for, given a field name: `clear` becomes
 /// `glClear`. Comptime, and public because code that looks a command up by
 /// hand should spell it the same way.
 pub fn commandName(comptime field: []const u8, comptime options: Options) [:0]const u8 {
-    return commandNameSuffixed(field, options, "");
+    return dyn.symbolName(field, comptime options.naming());
 }
 
 /// `commandName` with an extension suffix on the end: `bindVertexArray` and
@@ -175,74 +146,26 @@ pub fn commandNameSuffixed(
     comptime options: Options,
     comptime suffix: []const u8,
 ) [:0]const u8 {
-    comptime {
-        @setEvalBranchQuota(100_000);
-        if (field.len == 0) @compileError("fluxion-gl: a table field must have a name");
-        var buf: [options.prefix.len + field.len + suffix.len:0]u8 = undefined;
-        @memcpy(buf[0..options.prefix.len], options.prefix);
-        buf[options.prefix.len] = std.ascii.toUpper(field[0]);
-        @memcpy(buf[options.prefix.len + 1 ..][0 .. field.len - 1], field[1..]);
-        @memcpy(buf[options.prefix.len + field.len ..], suffix);
-        buf[buf.len] = 0;
-        const frozen = buf;
-        return &frozen;
-    }
+    return dyn.table.symbolNameSuffixed(field, comptime options.naming(), suffix);
 }
 
 /// Every name a table asks for, in field order. Comptime, so it costs nothing
 /// at run time: it is for printing what a driver was asked for next to what
 /// it answered.
 pub fn names(comptime Table: type) []const [:0]const u8 {
-    comptime {
-        @setEvalBranchQuota(100_000);
-        const fields = @typeInfo(Table).@"struct".fields;
-        var out: [fields.len][:0]const u8 = undefined;
-        for (&out, fields) |*slot, field| slot.* = commandName(field.name, optionsOf(Table));
-        const frozen = out;
-        return &frozen;
-    }
+    return dyn.table.namesWith(Table, comptime optionsOf(Table).naming());
 }
 
 /// How many commands a table has.
-pub fn count(comptime Table: type) usize {
-    return @typeInfo(Table).@"struct".fields.len;
-}
+pub const count = dyn.table.count;
 
 /// How many of them are optional - the width of the gap between the version a
 /// table requires and the version it can use.
-pub fn optionalCount(comptime Table: type) usize {
-    comptime {
-        var n: usize = 0;
-        for (@typeInfo(Table).@"struct".fields) |field| {
-            if (@typeInfo(field.type) == .optional) n += 1;
-        }
-        return n;
-    }
-}
+pub const optionalCount = dyn.table.optionalCount;
 
 // -------------------------------------------------------------------------
 // The parts that only exist at compile time
 // -------------------------------------------------------------------------
-
-/// Ask one resolver for one name. A plain `getProcAddress` is called; a value
-/// with a `get` method has that called, which is how `library.Chain` and
-/// anything else that carries state joins in.
-fn resolve(resolver: anytype, name: [:0]const u8) ?Proc {
-    const Resolver = @TypeOf(resolver);
-    const returned = switch (@typeInfo(Resolver)) {
-        .@"fn" => resolver(name.ptr),
-        .pointer => |pointer| switch (@typeInfo(pointer.child)) {
-            .@"fn" => resolver(name.ptr),
-            else => resolver.get(name.ptr),
-        },
-        .@"struct" => resolver.get(name.ptr),
-        .optional => @compileError("fluxion-gl: the resolver is optional (" ++ @typeName(Resolver) ++
-            "); unwrap it, so that a missing getProcAddress is not read as a driver with no commands"),
-        else => @compileError("fluxion-gl: a resolver is a getProcAddress function or a value with a `get` method, not " ++
-            @typeName(Resolver)),
-    };
-    return @ptrCast(returned);
-}
 
 /// The struct behind a `*Table`, with a readable error for the common slip of
 /// passing the table itself.
@@ -254,30 +177,16 @@ fn Pointee(comptime T: type) type {
     return info.pointer.child;
 }
 
-/// The function pointer type a field holds, with the optional taken off.
-fn CommandType(comptime Table: type, comptime field: std.builtin.Type.StructField) type {
-    const inner = switch (@typeInfo(field.type)) {
-        .optional => |optional| optional.child,
-        else => field.type,
-    };
-    const bad = "fluxion-gl: field " ++ @typeName(Table) ++ "." ++ field.name ++ " is " ++
-        @typeName(field.type) ++ "; a table field is `*const fn (...) callconv(.c) T`," ++
-        " or the optional of one for a command that may be absent";
-    switch (@typeInfo(inner)) {
-        .pointer => |pointer| {
-            if (pointer.size != .one or @typeInfo(pointer.child) != .@"fn") @compileError(bad);
-        },
-        else => @compileError(bad),
-    }
-    return inner;
-}
-
 fn optionsOf(comptime Table: type) Options {
     return if (@hasDecl(Table, "options")) Table.options else .{};
 }
 
 // -------------------------------------------------------------------------
 // Tests
+//
+// These do not re-test what `fluxion-dyn` already covers. They pin the part
+// of it this library puts its own name on: the `gl` prefix, the suffix
+// fallback GL needs for ES extensions, and `error.CommandMissing`.
 // -------------------------------------------------------------------------
 
 fn stub() callconv(.c) void {}
@@ -289,7 +198,7 @@ const Fake = struct {
     asked: [16][]const u8 = undefined,
     asked_len: usize = 0,
 
-    fn get(self: *Fake, name: [*:0]const u8) ?Proc {
+    pub fn get(self: *Fake, name: [*:0]const u8) ?Proc {
         const wanted = std.mem.span(name);
         if (self.asked_len < self.asked.len) {
             self.asked[self.asked_len] = wanted;
@@ -392,7 +301,7 @@ test "the suffix fallback, and only when it is asked for" {
 
 test "a resolver can be a plain getProcAddress" {
     const Driver = struct {
-        fn get(name: [*:0]const u8) callconv(.c) ?Proc {
+        fn get(name: [*:0]const u8) callconv(system) ?Proc {
             if (std.mem.eql(u8, std.mem.span(name), "glBindVertexArray")) return null;
             return @ptrCast(&stub);
         }
@@ -402,7 +311,7 @@ test "a resolver can be a plain getProcAddress" {
     try load(&api, Driver.get);
     try testing.expectEqual(null, api.bindVertexArray);
 
-    // The C type is the same function, so the pointer form works too.
+    // The declared type is the same function, so the pointer form works too.
     const pointer: GetProcAddress = &Driver.get;
     try load(&api, pointer);
 }
