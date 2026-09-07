@@ -27,6 +27,13 @@
             .hash = "fluxion_math-0.1.0-dfpZBeNUBAAwUMriLKaOTRBWGFmfY53_jyYuMUxkPYek",
             .lazy = true,
         },
+        // And what `--capture` saves a frame with.
+        .fluxion_image = .{
+            // A checkout next to this one, until the repository is published;
+            // then a `git+https` url and a hash, like the ones above.
+            .path = "../fluxion-image",
+            .lazy = true,
+        },
     },
     .paths = .{
         "build.zig",

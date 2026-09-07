@@ -61,7 +61,7 @@ pub fn build(b: *std.Build) void {
     const examples_wanted = b.option(
         bool,
         "examples",
-        "Build the examples and their tests (pulls fluxion-platform and fluxion-math)",
+        "Build the examples and their tests (pulls fluxion-platform, fluxion-math and fluxion-image)",
     ) orelse (b.pkg_hash.len == 0);
     if (!examples_wanted) return;
 
@@ -76,13 +76,18 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }) orelse return;
+    const image_dep = b.lazyDependency("fluxion_image", .{
+        .target = target,
+        .optimize = optimize,
+    }) orelse return;
     const platform_mod = platform_dep.module("fluxion_platform");
     const math_mod = math_dep.module("fluxion_math");
+    const image_mod = image_dep.module("fluxion_image");
 
     // What the examples share. None of it is part of the library: a window
-    // with a context in it, the shader boilerplate every frame needs, a PNG
-    // writer so a frame can be looked at without a display, and a driver that
-    // is not there.
+    // with a context in it, the shader boilerplate every frame needs, and a
+    // driver that is not there. Saving a frame as a PNG, so it can be looked
+    // at without a display, is `fluxion-image`'s.
     const window_mod = b.createModule(.{
         .root_source_file = b.path("examples/window.zig"),
         .target = target,
@@ -100,11 +105,6 @@ pub fn build(b: *std.Build) void {
             .{ .name = "fluxion_gl", .module = mod },
             .{ .name = "window", .module = window_mod },
         },
-    });
-    const capture_mod = b.createModule(.{
-        .root_source_file = b.path("examples/capture.zig"),
-        .target = target,
-        .optimize = optimize,
     });
     const driver_mod = b.createModule(.{
         .root_source_file = b.path("examples/driver.zig"),
@@ -130,7 +130,6 @@ pub fn build(b: *std.Build) void {
     }{
         .{ .name = "fluxion-gl-window-tests", .module = window_mod, .needs_window = true },
         .{ .name = "fluxion-gl-render-tests", .module = render_mod, .needs_window = true },
-        .{ .name = "fluxion-gl-capture-tests", .module = capture_mod },
         .{ .name = "fluxion-gl-driver-tests", .module = driver_mod },
     };
     for (suites) |suite| {
@@ -189,9 +188,9 @@ pub fn build(b: *std.Build) void {
             .imports = &.{
                 .{ .name = "fluxion_gl", .module = mod },
                 .{ .name = "fluxion_math", .module = math_mod },
+                .{ .name = "fluxion_image", .module = image_mod },
                 .{ .name = "window", .module = window_mod },
                 .{ .name = "render", .module = render_mod },
-                .{ .name = "capture", .module = capture_mod },
                 .{ .name = "driver", .module = driver_mod },
             },
         });

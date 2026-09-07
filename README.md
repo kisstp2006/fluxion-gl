@@ -67,13 +67,15 @@ One dependency comes with it, fetched the same way and needing nothing from
 you: [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn), where `loader`
 and `library` get their machinery from.
 
-Two more are named in `build.zig.zon` and are *not* fetched for you:
-[Fluxion Platform](https://github.com/kisstp2006/fluxion-platform) opens the window the examples draw
-into, and [Fluxion Math](https://github.com/kisstp2006/fluxion-math) is their
-matrices. Both are `lazy`, and `build.zig` asks for them only when this is the
-package being built - so a program that depends on `fluxion_gl` downloads
-neither, and the module imports neither. Pass `-Dexamples=false` to skip them
-in a checkout of this repository too.
+Three more are named in `build.zig.zon` and are *not* fetched for you:
+[Fluxion Platform](https://github.com/kisstp2006/fluxion-platform) opens the
+window the examples draw into,
+[Fluxion Math](https://github.com/kisstp2006/fluxion-math) is their matrices,
+and [Fluxion Image](https://github.com/kisstp2006/fluxion-image) saves a frame
+as a PNG. All three are `lazy`, and `build.zig` asks for them only when this
+is the package being built - so a program that depends on `fluxion_gl`
+downloads none of them, and the module imports none of them. Pass
+`-Dexamples=false` to skip them in a checkout of this repository too.
 
 ## Tour
 
@@ -386,13 +388,15 @@ to `load` as it is. It already looks in both places a command can be — the
 context's extension mechanism, and `opengl32.dll` behind it for everything
 from 1.1 — so `library.Chain` is for a program that brought its own window.
 
-`examples/render.zig` is the shader boilerplate, `examples/capture.zig` writes
-a frame out as a PNG, and the four-by-fours come from
+`examples/render.zig` is the shader boilerplate. The four-by-fours come from
 [Fluxion Math](https://github.com/kisstp2006/fluxion-math) — `proj.Clip.gl`
-is the one line that says which API's clip space a projection is for. None of
-it is part of the library: a loader has no business having an opinion about
-your vectors, and less about your pixels. Both libraries are lazy dependencies
-of the examples alone; see [Install](#install).
+is the one line that says which API's clip space a projection is for — and
+`--capture` writes its frame out with
+[Fluxion Image](https://github.com/kisstp2006/fluxion-image), told that
+`glReadPixels` hands the bottom row back first. None of it is part of the
+library: a loader has no business having an opinion about your vectors, and
+less about your pixels. All three libraries are lazy dependencies of the
+examples alone; see [Install](#install).
 
 All of them carry tests, and `zig build test` runs them, because an entry
 point nothing has called is a guess. They open a hidden context and draw into

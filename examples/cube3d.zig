@@ -34,7 +34,7 @@ const std = @import("std");
 const Io = std.Io;
 
 const opengl = @import("fluxion_gl");
-const capture = @import("capture");
+const image = @import("fluxion_image");
 const math = @import("fluxion_math");
 const render = @import("render");
 const Window = @import("window").Window;
@@ -305,15 +305,14 @@ pub fn main(init: std.process.Init) !void {
         const pixels = try screen.read(&api, init.gpa);
         defer init.gpa.free(pixels);
 
-        try capture.writePng(
-            init.gpa,
-            init.io,
-            path,
-            options.width,
-            options.height,
-            pixels,
-            @as(usize, options.width) * 4,
-        );
+        try image.png.writeFile(init.gpa, init.io, path, .{
+            .width = options.width,
+            .height = options.height,
+            .pixels = pixels,
+            .row_pitch = @as(usize, options.width) * 4,
+            // glReadPixels hands the bottom row back first.
+            .origin = .bottom_left,
+        }, .{});
         try out.print("wrote {s}, {d} by {d}, at {d:.2} seconds\n", .{
             path,
             options.width,
