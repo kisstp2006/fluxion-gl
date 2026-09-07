@@ -3,10 +3,9 @@
 //! The C types OpenGL is written in, spelled as Zig types.
 //!
 //! GL declares its own names for the machine's integers - `GLint`, `GLsizei`,
-//! `GLenum` - and a command table has to use the same widths the driver was
-//! compiled with, so these are aliases for the C types rather than for `i32`
-//! and friends. On every platform GL runs on they come out the same size; the
-//! aliases are what makes that a fact rather than a hope.
+//! `GLenum` - and a table has to use the widths the driver was compiled with,
+//! so these alias the C types rather than `i32` and friends. That is what makes
+//! matching sizes a fact rather than a hope.
 //!
 //! Two of them are worth reading twice:
 //!
@@ -136,9 +135,8 @@ pub fn boolean(value: bool) Boolean {
 /// commands taking a `const void *` want when a buffer is bound: not an
 /// address at all, but a number of bytes from the start of the buffer.
 ///
-/// It exists because the obvious spelling is wrong in Zig. `@ptrFromInt(0)`
-/// is illegal behaviour for a non-optional pointer, and offset zero - the
-/// first attribute in every interleaved vertex - is the common case:
+/// It exists because the obvious spelling is wrong in Zig: `@ptrFromInt(0)` is
+/// illegal for a non-optional pointer, and offset zero is the common case.
 ///
 /// ```zig
 /// api.vertexAttribPointer(0, 3, c.float, c.gl_false, stride, offset(0));

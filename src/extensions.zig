@@ -2,16 +2,15 @@
 
 //! Which extensions a context has, asked without allocating.
 //!
-//! There are two ways to ask, because OpenGL changed its mind. Up to 3.0, and
-//! in every version of ES, `glGetString(GL_EXTENSIONS)` returns the whole set
-//! as one space-separated string - that is `List`. From 3.0 the flat string
-//! is deprecated and, in a core profile, returns null; the set comes one name
-//! at a time from `glGetStringi(GL_EXTENSIONS, i)` for `GL_NUM_EXTENSIONS`
-//! values of `i` - that is `Set`, over a buffer the caller owns.
+//! Two ways to ask, because OpenGL changed its mind. Up to 3.0, and in every
+//! version of ES, `glGetString(GL_EXTENSIONS)` returns the set as one
+//! space-separated string - that is `List`. From 3.0 that returns null in a
+//! core profile and the set comes one name at a time from `glGetStringi` -
+//! that is `Set`, over a buffer the caller owns.
 //!
-//! Both answer the same questions and neither copies anything: a `List` is a
-//! pointer into the driver's own string, and a `Set` is a slice of pointers
-//! into it. They stay valid as long as the context does.
+//! Both answer the same questions and neither copies: a `List` points into the
+//! driver's own string and a `Set` is a slice of pointers into it, both valid
+//! as long as the context.
 //!
 //! A name may be given with or without the `GL_` on the front, because half
 //! the specifications write it one way and half the other:

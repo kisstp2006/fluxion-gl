@@ -3,11 +3,10 @@
 //! What `glGetString(GL_VERSION)` and `GL_SHADING_LANGUAGE_VERSION` say, read
 //! as numbers.
 //!
-//! There is no version query in OpenGL that does not need parsing. `GL_MAJOR_
-//! VERSION` and `GL_MINOR_VERSION` are integers, but they only exist from
-//! OpenGL 3.0 and not at all in ES 2.0 - so a program that has to find out
-//! whether it may use them has already had to read the string. The string is
-//! the one thing every context has:
+//! No version query in OpenGL avoids parsing. `GL_MAJOR_VERSION` and
+//! `GL_MINOR_VERSION` are integers, but exist only from OpenGL 3.0 and not at
+//! all in ES 2.0, so finding out whether you may use them means reading the
+//! string first. The string is the one thing every context has:
 //!
 //!   `4.6.0 NVIDIA 550.54.14`
 //!   `3.3.0 - Build 27.20.100.8681`
@@ -15,18 +14,16 @@
 //!   `OpenGL ES 3.2 Mesa 23.2.1`
 //!   `OpenGL ES-CM 1.1`
 //!
-//! The shape is fixed by the specification and the rest is the vendor's to
-//! fill: an optional `OpenGL ES` in front, then major and minor, then a
-//! release number that means nothing outside that vendor, then anything at
-//! all. `Version.parse` takes the part that is specified and hands back the
-//! rest as `release`, unread.
+//! The shape is fixed by the specification and the rest is the vendor's: an
+//! optional `OpenGL ES` in front, then major and minor, then a vendor release
+//! number, then anything at all. `Version.parse` takes the specified part and
+//! hands back the rest as `release`, unread.
 //!
-//! `Glsl` is the same job for the shading language, whose numbering is not
-//! the API's - OpenGL 3.2 speaks GLSL 1.50 - and whose minor is two digits
-//! wide, because it is written into the shader as one number: `#version 150`.
-//! `Version.glsl` gives the language version a context implies, and
-//! `Glsl.writeDirective` writes the line a shader starts with, including the
-//! `es` that ES 3.0 and later want and ES 2.0 does not.
+//! `Glsl` is the same job for the shading language, whose numbering is not the
+//! API's - OpenGL 3.2 speaks GLSL 1.50 - and whose minor is two digits wide,
+//! because a shader writes it as one number: `#version 150`. `Version.glsl`
+//! gives the version a context implies, and `Glsl.writeDirective` writes the
+//! line a shader starts with, including the `es` that ES 3.0 wants.
 
 const std = @import("std");
 const testing = std.testing;

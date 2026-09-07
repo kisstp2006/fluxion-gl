@@ -28,8 +28,7 @@
 //! ```
 //!
 //! Nothing here allocates: a table is a struct the caller owns, an extension
-//! list points into the driver's own string, and a version is four numbers
-//! and a slice.
+//! list points into the driver's own string, a version is four numbers.
 
 const std = @import("std");
 const testing = std.testing;

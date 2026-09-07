@@ -9,17 +9,15 @@
 //! textures, sync objects, uniform blocks - and is `null` where the driver
 //! has not got it.
 //!
-//! ES is not a subset of the desktop API with the same spelling. `glClearDepthf`
-//! takes a float where desktop takes a double, `glReadPixels` is allowed to
-//! refuse every format but one, there is no `glPolygonMode` and there never
-//! will be, and the shading language is a different language with its own
-//! version numbering. Those differences are why this is a separate table
-//! rather than the other one with fields removed: a program that means ES
-//! should say so, and get a compile error where it strays.
+//! ES is not a subset of the desktop API with the same spelling.
+//! `glClearDepthf` takes a float where desktop takes a double, `glReadPixels`
+//! may refuse every format but one, there is no `glPolygonMode`, and the
+//! shading language has its own version numbering. Which is why this is a
+//! separate table rather than the other one with fields removed: a program that
+//! means ES should say so, and get a compile error where it strays.
 //!
-//! What is the same is the loading. These are `gl` names, resolved by the
-//! same `loader` from the same `getProcAddress` - `eglGetProcAddress`, or
-//! whatever GLFW and SDL hand over for an ES context.
+//! The loading is the same: `gl` names, resolved by the same `loader` from
+//! whatever `getProcAddress` an ES context comes with.
 //!
 //! ```zig
 //! var api: gles.Api = undefined;

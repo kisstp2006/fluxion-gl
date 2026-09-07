@@ -3,17 +3,15 @@
 //! The numbers the commands take, which GL calls enums even though they are
 //! one flat numbering shared by every argument of every command.
 //!
-//! That flatness is worth knowing about. `linear` is a texture filter and
-//! `line` is a polygon mode, and nothing but the spelling stops either from
-//! being passed where the other belongs; the driver answers `invalid_enum`
-//! and carries on drawing whatever it drew last. The names here are the
-//! Khronos ones with `GL_` taken off and lowered, so anything findable in the
-//! specification, in a tutorial or in a C header is findable here.
+//! That flatness is worth knowing about: `linear` is a texture filter and
+//! `line` is a polygon mode, and nothing but the spelling stops either being
+//! passed where the other belongs - the driver answers `invalid_enum` and
+//! carries on drawing whatever it drew last. The names are the Khronos ones
+//! with `GL_` taken off and lowered.
 //!
-//! What is here is what the tables in `gl` and `gles` can be passed, which is
-//! a few hundred of the several thousand in the registry. An extension token
-//! that is not here is a number like any other: pass it as a literal, or
-//! declare it next to the code that uses it.
+//! What is here is what the tables in `gl` and `gles` can be passed, a few
+//! hundred of the several thousand in the registry. A token that is not here is
+//! a number like any other: pass it as a literal.
 //!
 //! The `_bit` names are ored together into a `Bitfield`; everything else is
 //! an `Enum` and stands alone.

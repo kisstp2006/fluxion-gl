@@ -9,17 +9,15 @@
 //! context that has not got it, which is the version check happening at the
 //! call site, in the type system, rather than in a comment.
 //!
-//! 3.3 is the line because it is where the modern API stops moving: vertex
-//! array objects, instancing, samplers and explicit attribute locations are
-//! all in it, it is what macOS froze at, and it is what a driver from the
-//! last fifteen years has. A program that needs less can declare its own
-//! table with fewer fields - the loader does not care where the struct came
-//! from - and a program that needs more can add optional fields to a copy of
-//! this one.
+//! 3.3 is the line because it is where the modern API stops moving - vertex
+//! array objects, instancing, samplers, explicit attribute locations - it is
+//! what macOS froze at, and what any driver of the last fifteen years has. A
+//! program that needs less can declare its own table with fewer fields; the
+//! loader does not care where the struct came from.
 //!
-//! Compatibility-profile commands are not here at all. `glBegin`,
-//! `glMatrixMode` and the rest still load on Windows and on a compatibility
-//! context, and nothing in this library will help you use them.
+//! Compatibility-profile commands are not here at all. `glBegin` and the rest
+//! still load on a compatibility context, and nothing here will help you use
+//! them.
 //!
 //! ```zig
 //! var api: gl.Api = undefined;

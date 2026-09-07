@@ -87,11 +87,10 @@ try opengl.load(&api, glfwGetProcAddress);   // asks for glClear, glDrawArrays, 
 ```
 
 Optionality is in the type, and that is the whole version policy. A
-`*const fn ...` field is required: if the driver has not got it, loading fails
-and says which one. A `?*const fn ...` field is optional: if the driver has
-not got it the field is `null`, loading carries on, and the compiler makes the
-call site unwrap it - so "does this context have compute shaders?" is asked
-where the answer matters, and cannot be forgotten:
+`*const fn ...` field is required and loading fails naming it; a
+`?*const fn ...` field is left `null` when the driver has not got it, and the
+compiler makes the call site unwrap it — so "does this context have compute
+shaders?" is asked where the answer matters:
 
 ```zig
 if (api.dispatchCompute) |dispatch| {
@@ -166,12 +165,11 @@ if (api.bindVertexArray) |bind| bind(vao);   // ES 3.0, or an extension
 api.clearDepthf(1.0);                        // and not clearDepth, which ES has not got
 ```
 
-It is a separate table rather than the desktop one with fields removed
-because ES is a different API that shares an ancestor. `glClearDepthf` takes a
-float where the desktop takes a double, `glReadPixels` is allowed to refuse
-every format but one, there is no `glPolygonMode` and there never will be, and
-the shading language has its own version numbering. A program that means ES
-should say so, and get a compile error where it strays.
+It is a separate table rather than the desktop one with fields removed, because
+ES is a different API that shares an ancestor: `glClearDepthf` takes a float
+where desktop takes a double, `glReadPixels` may refuse every format but one,
+there is no `glPolygonMode`, and the shading language numbers itself. A program
+that means ES should say so, and get a compile error where it strays.
 
 On an ES 2.0 context, vertex array objects are `GL_OES_vertex_array_object`.
 That is the one case where the suffix fallback is worth turning on:
@@ -183,8 +181,7 @@ try opengl.loader.loadWith(&api, get, .{ .suffixes = &.{"OES"} });
 It is off by default, and worth leaving off for anything you have not checked.
 An extension entry point is usually the same function under an older name, but
 not always: `glBindFramebufferEXT` belongs to a different object model than
-core `glBindFramebuffer`, and a loader that quietly substitutes one for the
-other produces a program that runs and draws nothing.
+`glBindFramebuffer`, and substituting one for the other draws nothing.
 
 ### enums
 
