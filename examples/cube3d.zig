@@ -18,7 +18,7 @@
 //! **Which way round a matrix goes.** GLSL reads a `mat4` column by column,
 //! and `uniformMatrix4fv` uploads exactly what it is handed unless
 //! `transpose` says otherwise - so a matrix written out column by column in
-//! Zig arrives the right way up. `examples/matrix.zig` writes them that way,
+//! Zig arrives the right way up. `fluxion-math` stores them that way,
 //! and passing `gl_true` for `transpose` to "fix" a picture that is wrong for
 //! some other reason is how an afternoon goes missing.
 //!
@@ -35,7 +35,7 @@ const Io = std.Io;
 
 const opengl = @import("fluxion_gl");
 const capture = @import("capture");
-const matrix = @import("matrix");
+const math = @import("fluxion_math");
 const render = @import("render");
 const Window = @import("window").Window;
 
@@ -217,20 +217,23 @@ const Cube = struct {
         // roll it, because a tilt that is applied before a spin is carried
         // round by the spin - the cube ends up face-on with its edges turning
         // in the screen, which looks like a bug in the projection and is not.
-        const model = matrix.rotateY(seconds * 0.6);
-        const view = matrix.chain(&.{
-            matrix.translate(0, 0, -4.6),
-            matrix.rotateX(0.5),
+        const model = math.Mat4.fromAxisAngle(.unit_y, seconds * 0.6);
+        const view = math.Mat4.fromTranslation(.{ .z = -4.6 }).mul(.fromAxisAngle(.unit_x, 0.5));
+        const projection = math.perspective(.{
+            .fov_y = math.radians(45),
+            .aspect = aspect,
+            .near = 0.1,
+            .far = 100,
+            // Depth from -1 to 1, origin at the bottom left: the one place
+            // OpenGL, Vulkan and Direct3D disagree, and the one thing to
+            // change here for either of the other two.
+            .clip = .gl,
         });
-        const mvp = matrix.chain(&.{
-            matrix.perspective(std.math.degreesToRadians(45), aspect, 0.1, 100),
-            view,
-            model,
-        });
+        const mvp = projection.mul(view).mul(model);
 
         self.program.use(api);
-        api.uniformMatrix4fv(self.mvp, 1, types.gl_false, &mvp);
-        api.uniformMatrix4fv(self.model, 1, types.gl_false, &model);
+        api.uniformMatrix4fv(self.mvp, 1, types.gl_false, &mvp.array());
+        api.uniformMatrix4fv(self.model, 1, types.gl_false, &model.array());
 
         api.bindVertexArray(self.vao);
         api.drawElements(c.triangles, cube_indices.len, c.unsigned_short, opengl.offset(0));
@@ -431,15 +434,7 @@ test "a frame of it, rendered and looked at" {
     // into a framebuffer object with nothing on screen behind it, and checks
     // that the cube is where it should be and the background is where it
     // should be.
-    var window = Window.open(.{
-        .title = "fluxion-gl test",
-        .width = 128,
-        .height = 128,
-        .visible = false,
-    }) catch |err| switch (err) {
-        error.NoModernContext, error.ContextFailed, error.PixelFormatFailed => return error.SkipZigTest,
-        else => return err,
-    };
+    var window = try @import("window").openForTest(128, 128);
     defer window.close();
 
     var api: opengl.Gl = undefined;

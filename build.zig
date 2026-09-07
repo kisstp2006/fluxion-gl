@@ -34,21 +34,63 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run the library test suite");
     test_step.dependOn(&run_tests.step);
 
-    // The library runs anywhere; a window does not. Everything that opens one
-    // is Win32, so on another system those examples are left out of the build
-    // rather than failing in it - and a program there gets its context from
-    // GLFW or SDL and hands their `getProcAddress` to `load` just the same.
-    const windows = target.result.os.tag == .windows;
+    // zig build docs -> zig-out/docs
+    const docs_lib = b.addLibrary(.{
+        .name = "fluxion-gl",
+        .root_module = mod,
+    });
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs_lib.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+    const docs_step = b.step("docs", "Generate API documentation into zig-out/docs");
+    docs_step.dependOn(&install_docs.step);
+
+    // -------------------------------------------------------------------
+    // Examples
+    // -------------------------------------------------------------------
+
+    // The examples need a window to draw into and matrices to draw with, and
+    // neither is this library's business: the window is `fluxion-platform`
+    // and the matrices are `fluxion-math`. Both are lazy dependencies, so
+    // they are fetched only when the examples are actually wanted - which is
+    // when this is the package being built, not when it is somebody else's
+    // dependency. `-Dexamples=false` builds the library's own tests alone;
+    // `-Dexamples=true` asks for them from inside another package.
+    const examples_wanted = b.option(
+        bool,
+        "examples",
+        "Build the examples and their tests (pulls fluxion-platform and fluxion-math)",
+    ) orelse (b.pkg_hash.len == 0);
+    if (!examples_wanted) return;
+
+    // On the first run after a clean checkout these come back null and the
+    // build runner fetches them and starts again, so returning here is not
+    // giving up - it is the first half of the fetch.
+    const platform_dep = b.lazyDependency("fluxion_platform", .{
+        .target = target,
+        .optimize = optimize,
+    }) orelse return;
+    const math_dep = b.lazyDependency("fluxion_math", .{
+        .target = target,
+        .optimize = optimize,
+    }) orelse return;
+    const platform_mod = platform_dep.module("fluxion_platform");
+    const math_mod = math_dep.module("fluxion_math");
 
     // What the examples share. None of it is part of the library: a window
-    // with a context in it, the shader boilerplate every frame needs, the
-    // matrices a program brings with it, a PNG writer so a frame can be
-    // looked at without a display, and a driver that is not there.
+    // with a context in it, the shader boilerplate every frame needs, a PNG
+    // writer so a frame can be looked at without a display, and a driver that
+    // is not there.
     const window_mod = b.createModule(.{
         .root_source_file = b.path("examples/window.zig"),
         .target = target,
         .optimize = optimize,
-        .imports = &.{.{ .name = "fluxion_gl", .module = mod }},
+        .imports = &.{
+            .{ .name = "fluxion_gl", .module = mod },
+            .{ .name = "fluxion_platform", .module = platform_mod },
+        },
     });
     const render_mod = b.createModule(.{
         .root_source_file = b.path("examples/render.zig"),
@@ -58,11 +100,6 @@ pub fn build(b: *std.Build) void {
             .{ .name = "fluxion_gl", .module = mod },
             .{ .name = "window", .module = window_mod },
         },
-    });
-    const matrix_mod = b.createModule(.{
-        .root_source_file = b.path("examples/matrix.zig"),
-        .target = target,
-        .optimize = optimize,
     });
     const capture_mod = b.createModule(.{
         .root_source_file = b.path("examples/capture.zig"),
@@ -76,6 +113,13 @@ pub fn build(b: *std.Build) void {
         .imports = &.{.{ .name = "fluxion_gl", .module = mod }},
     });
 
+    // A window needs a windowing system, which a cross-compiled build has no
+    // way to reach. Everything still *builds* for any target - the platform
+    // library answers `.none` where it has no backend - but the runs and the
+    // tests that open one are for the host only. On a host with no display
+    // those tests skip themselves rather than fail.
+    const host = target.result.os.tag == @import("builtin").os.tag;
+
     // They carry their own tests, and they run with the library's: an entry
     // point nothing has called is a guess, and the way to stop guessing is to
     // draw a triangle into a framebuffer object and look at the pixels.
@@ -86,12 +130,11 @@ pub fn build(b: *std.Build) void {
     }{
         .{ .name = "fluxion-gl-window-tests", .module = window_mod, .needs_window = true },
         .{ .name = "fluxion-gl-render-tests", .module = render_mod, .needs_window = true },
-        .{ .name = "fluxion-gl-matrix-tests", .module = matrix_mod },
         .{ .name = "fluxion-gl-capture-tests", .module = capture_mod },
         .{ .name = "fluxion-gl-driver-tests", .module = driver_mod },
     };
     for (suites) |suite| {
-        if (suite.needs_window and !windows) continue;
+        if (suite.needs_window and !host) continue;
         const suite_tests = b.addTest(.{ .name = suite.name, .root_module = suite.module });
         test_step.dependOn(&b.addRunArtifact(suite_tests).step);
     }
@@ -139,17 +182,15 @@ pub fn build(b: *std.Build) void {
     var previous: ?*std.Build.Step = null;
 
     for (examples) |example| {
-        if (example.needs_window and !windows) continue;
-
         const example_mod = b.createModule(.{
             .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
             .target = target,
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "fluxion_gl", .module = mod },
+                .{ .name = "fluxion_math", .module = math_mod },
                 .{ .name = "window", .module = window_mod },
                 .{ .name = "render", .module = render_mod },
-                .{ .name = "matrix", .module = matrix_mod },
                 .{ .name = "capture", .module = capture_mod },
                 .{ .name = "driver", .module = driver_mod },
             },
@@ -165,6 +206,8 @@ pub fn build(b: *std.Build) void {
         // Anything after `--` goes through: `zig build example-cube3d -- --frames 60`.
         if (b.args) |args| run.addArgs(args);
         b.step(example.step, example.about).dependOn(&run.step);
+
+        if (example.needs_window and !host) continue;
 
         // A second run for the aggregate step, chained one after another so
         // that `zig build examples` reads as a page rather than as five
@@ -185,17 +228,4 @@ pub fn build(b: *std.Build) void {
         });
         test_step.dependOn(&b.addRunArtifact(example_tests).step);
     }
-
-    // zig build docs -> zig-out/docs
-    const docs_lib = b.addLibrary(.{
-        .name = "fluxion-gl",
-        .root_module = mod,
-    });
-    const install_docs = b.addInstallDirectory(.{
-        .source_dir = docs_lib.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs",
-    });
-    const docs_step = b.step("docs", "Generate API documentation into zig-out/docs");
-    docs_step.dependOn(&install_docs.step);
 }

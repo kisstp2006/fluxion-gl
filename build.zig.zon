@@ -6,9 +6,27 @@
     .minimum_zig_version = "0.16.0",
     .fingerprint = 0x582be8e9e208d017,
     .dependencies = .{
+        // The library's one dependency.
         .fluxion_dyn = .{
             .url = "git+https://github.com/kisstp2006/fluxion-dyn#27e7ba0dffff86887801afc7d312bfcdaff1c54f",
             .hash = "fluxion_dyn-0.1.0-5Dy8EU9PAQAp7cuNi6RU8eu0pgcFXWUbrBq69b7idVnA",
+        },
+
+        // What the examples draw with. Lazy: fetched only when the examples
+        // are built, which is when this is the root package or `-Dexamples`
+        // is given. A program that depends on `fluxion_gl` never downloads
+        // either, and the module itself imports neither - a loader has no
+        // business opening windows or having opinions about vectors.
+        .fluxion_platform = .{
+            // A checkout next to this one, until the repository is published;
+            // then a `git+https` url and a hash, like the two above.
+            .path = "../fluxion-platform",
+            .lazy = true,
+        },
+        .fluxion_math = .{
+            .url = "git+https://github.com/kisstp2006/fluxion-math#92afdbddbf930369265d24136402c7eb5dd8f70e",
+            .hash = "fluxion_math-0.1.0-dfpZBeNUBAAwUMriLKaOTRBWGFmfY53_jyYuMUxkPYek",
+            .lazy = true,
         },
     },
     .paths = .{

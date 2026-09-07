@@ -32,7 +32,7 @@ const Io = std.Io;
 
 const opengl = @import("fluxion_gl");
 const capture = @import("capture");
-const matrix = @import("matrix");
+const math = @import("fluxion_math");
 const render = @import("render");
 const Window = @import("window").Window;
 
@@ -299,7 +299,17 @@ const Sprites = struct {
         api.bindBuffer(c.array_buffer, self.instances);
         api.bufferSubData(c.array_buffer, 0, @sizeOf(@TypeOf(instances)), &instances);
 
-        const projection = matrix.ortho(0, scene.width, 0, scene.height, -1, 1);
+        // One unit is one pixel, origin at the bottom left - which is where
+        // OpenGL puts it, and what `Clip.gl` says.
+        const projection = math.orthographic(.{
+            .left = 0,
+            .right = scene.width,
+            .bottom = 0,
+            .top = scene.height,
+            .near = -1,
+            .far = 1,
+            .clip = .gl,
+        }).array();
         self.program.use(api);
         api.uniformMatrix4fv(self.projection, 1, types.gl_false, &projection);
 
@@ -509,15 +519,7 @@ test "the same moment is the same picture" {
 }
 
 test "a frame of it, rendered and looked at" {
-    var window = Window.open(.{
-        .title = "fluxion-gl test",
-        .width = 256,
-        .height = 128,
-        .visible = false,
-    }) catch |err| switch (err) {
-        error.NoModernContext, error.ContextFailed, error.PixelFormatFailed => return error.SkipZigTest,
-        else => return err,
-    };
+    var window = try @import("window").openForTest(256, 128);
     defer window.close();
 
     var api: opengl.Gl = undefined;

@@ -218,10 +218,8 @@ const Window = @import("window").Window;
 const testing = std.testing;
 
 fn context() !Window {
-    return Window.open(.{ .title = "fluxion-gl test", .width = 64, .height = 64, .visible = false }) catch |err| switch (err) {
-        error.NoModernContext, error.ContextFailed, error.PixelFormatFailed => error.SkipZigTest,
-        else => err,
-    };
+    // Hidden, and skipped rather than failed on a machine with no display.
+    return @import("window").openForTest(64, 64);
 }
 
 const flat_vertex =

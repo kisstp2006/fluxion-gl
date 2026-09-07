@@ -67,6 +67,14 @@ One dependency comes with it, fetched the same way and needing nothing from
 you: [Fluxion Dyn](https://github.com/kisstp2006/fluxion-dyn), where `loader`
 and `library` get their machinery from.
 
+Two more are named in `build.zig.zon` and are *not* fetched for you:
+[Fluxion Platform](../fluxion-platform) opens the window the examples draw
+into, and [Fluxion Math](https://github.com/kisstp2006/fluxion-math) is their
+matrices. Both are `lazy`, and `build.zig` asks for them only when this is the
+package being built - so a program that depends on `fluxion_gl` downloads
+neither, and the module imports neither. Pass `-Dexamples=false` to skip them
+in a checkout of this repository too.
+
 ## Tour
 
 ### loader
@@ -368,18 +376,23 @@ which answers `getProcAddress` and remembers what it was told — because they
 are about loading rather than drawing, and a fake driver can be a version
 behind on purpose. The other three open a real context and use the real one.
 
-`examples/window.zig` is the Win32 and WGL that a context needs and nothing
-more, including the two-step bootstrap: `wglCreateContextAttribsARB` is the
-call that makes a 3.3 core context and is itself an extension, so it has to be
-fetched from an old-style context that is then thrown away. It is also where
-`library.Chain` earns its place — the window hands `load` the context's
-`getProcAddress` with `opengl32.dll` behind it, which is the only combination
-that fills a table on Windows.
+`examples/window.zig` is a window with a context in it, and it is
+[Fluxion Platform](../fluxion-platform) doing the work: Win32 and WGL here,
+X11 and GLX or Wayland and EGL there, chosen when the program starts. What is
+left in the file is the shape the examples want — one struct with a `pump`
+and a `present`. It is also where the two libraries meet: a platform window
+has a `get`, which makes it a resolver in Fluxion Dyn's sense, so it is handed
+to `load` as it is. It already looks in both places a command can be — the
+context's extension mechanism, and `opengl32.dll` behind it for everything
+from 1.1 — so `library.Chain` is for a program that brought its own window.
 
 `examples/render.zig` is the shader boilerplate, `examples/capture.zig` writes
-a frame out as a PNG, and `examples/matrix.zig` is the four-by-fours. None of
-the five is part of the library: a loader has no business having an opinion
-about your vectors, and less about your pixels.
+a frame out as a PNG, and the four-by-fours come from
+[Fluxion Math](https://github.com/kisstp2006/fluxion-math) — `proj.Clip.gl`
+is the one line that says which API's clip space a projection is for. None of
+it is part of the library: a loader has no business having an opinion about
+your vectors, and less about your pixels. Both libraries are lazy dependencies
+of the examples alone; see [Install](#install).
 
 All of them carry tests, and `zig build test` runs them, because an entry
 point nothing has called is a guess. They open a hidden context and draw into
@@ -388,17 +401,11 @@ the cube, its corners are the background, and at least three faces are
 visible, which is the only way to be sure the winding, the projection and the
 depth test all agree.
 
-One of those tests exists because of a bug it found. The bootstrap window is
-created and destroyed inside `open`, and its `WM_DESTROY` reached the message
-procedure the real window uses — so the first `pump` saw a window that had
-already gone, and the example opened a window, drew nothing, and reported
-zero frames. The bootstrap gets a window class of its own now, and the test
-opens a window and pumps it twice.
-
-The three that need a context are Win32 only, and `zig build` leaves them out
-on other systems rather than failing there: the library runs anywhere, a
-window does not. Elsewhere GLFW or SDL make the context, and `load` takes
-their `getProcAddress` exactly the same way.
+The three that need a context build everywhere and run wherever there is a
+display. On a machine without one — a build server, an SSH session — they say
+so and their tests skip rather than fail; when cross-compiling, `zig build`
+leaves the runs out altogether. A program that brought its own window from
+GLFW or SDL hands `load` their `getProcAddress` exactly the same way.
 
 ## Build
 

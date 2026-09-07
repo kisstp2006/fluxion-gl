@@ -24,7 +24,7 @@ const Io = std.Io;
 
 const opengl = @import("fluxion_gl");
 const driver = @import("driver");
-const matrix = @import("matrix");
+const math = @import("fluxion_math");
 const c = opengl.enums;
 const types = opengl.types;
 
@@ -222,10 +222,13 @@ fn frame(out: *Io.Writer, device: Device, pixels: []u8) !void {
 
     const program = gl.createProgram();
     gl.useProgram(program);
-    const model = matrix.chain(&.{
-        matrix.perspective(std.math.degreesToRadians(50), aspect, 0.1, 100),
-        matrix.translate(0, 0, -2.6),
-    });
+    const model = math.perspective(.{
+        .fov_y = math.radians(50),
+        .aspect = aspect,
+        .near = 0.1,
+        .far = 100,
+        .clip = .gl,
+    }).mul(.fromTranslation(.{ .z = -2.6 })).array();
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "mvp"), 1, types.gl_false, &model);
     gl.uniform4f(gl.getUniformLocation(program, "tint"), 1, 1, 1, 1);
 
