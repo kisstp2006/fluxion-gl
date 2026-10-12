@@ -547,6 +547,21 @@ pub const Api = struct {
         height: Sizei,
         depth: Sizei,
     ) callconv(.c) void,
+    /// 4.3, or `GL_ARB_vertex_attrib_binding`. A vertex buffer bound to a
+    /// slot of the vertex array, apart from what the attributes read of it:
+    /// a draw with other vertices is one call a buffer, not one an
+    /// attribute.
+    bindVertexBuffer: ?*const fn (binding_index: Uint, buffer: Uint, offset: Intptr, stride: Sizei) callconv(.c) void,
+    /// 4.3. What an attribute reads of its slot's buffer, and from where in
+    /// a vertex.
+    vertexAttribFormat: ?*const fn (attrib_index: Uint, size: Int, kind: Enum, normalized: Boolean, relative_offset: Uint) callconv(.c) void,
+    /// 4.3. The same for an attribute read as whole numbers.
+    vertexAttribIFormat: ?*const fn (attrib_index: Uint, size: Int, kind: Enum, relative_offset: Uint) callconv(.c) void,
+    /// 4.3. Which slot an attribute reads.
+    vertexAttribBinding: ?*const fn (attrib_index: Uint, binding_index: Uint) callconv(.c) void,
+    /// 4.3. How often a slot steps: once a vertex, or once every so many
+    /// instances.
+    vertexBindingDivisor: ?*const fn (binding_index: Uint, divisor: Uint) callconv(.c) void,
     /// 4.4. A buffer whose storage never moves, so it can stay mapped while
     /// the GPU reads it.
     bufferStorage: ?*const fn (target: Enum, size: Sizeiptr, data: ?*const anyopaque, flags: Bitfield) callconv(.c) void,
@@ -800,6 +815,7 @@ test "what the table asks the driver for" {
     // The commands that are optional are the ones past 3.3, and nothing else.
     try testing.expect(@typeInfo(@FieldType(Api, "dispatchCompute")) == .optional);
     try testing.expect(@typeInfo(@FieldType(Api, "texStorage2D")) == .optional);
+    try testing.expect(@typeInfo(@FieldType(Api, "bindVertexBuffer")) == .optional);
     try testing.expect(@typeInfo(@FieldType(Api, "drawArrays")) != .optional);
     try testing.expect(@typeInfo(@FieldType(Api, "bindVertexArray")) != .optional);
     try testing.expect(@typeInfo(@FieldType(Api, "vertexAttribDivisor")) != .optional);
